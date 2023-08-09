@@ -11,7 +11,7 @@ setwd('~/Siontis research/')
 # All data
 # VTdata <- read.csv('12-10 R - Data extraction VT imaging Siontis.csv', na.strings = c("", "NA"))
 VTdata <- read.csv('5-7-23 WS edits - Data extraction VT imaging Siontis.csv', na.strings = c("", "NA"))
-  sw# Separate out repeats and non-repeats
+  # Separate out repeats and non-repeats
   repeats <- VTdata[132:146,] # Grabs the repeat ablations of those w/ multiple ablations during our time period
     VTdata <- VTdata[-c(130:131),]
 VTdata <- VTdata[1:129,] # Gets rid of people who had >1 ablation in our time period
@@ -77,13 +77,19 @@ freq(VTdata[,c(32)]) # Antiarrhythmic after procedure
   freq(onantiarrhythmic[,c(34)]) # If on antiarrhythmic, was it for >1 year 0 = no, 1 = Y, 2 = <1yr, 3 = death/transplant, 4 = no record
 freq(VTdata[,c(35)]) # Transplant at time of analysis
 freq(VTdata[,c(39)]) # Dead? 1 = dead
-mean(VTdata[,c(38)]) # Mean time to endpoint
-  sd(VTdata[,c(38)]) # SD time to endpoint
+mean(VTdata[,c(38)]) # Mean time to follow up / tx / death
+  sd(VTdata[,c(38)]) # SD time to follow up / tx / death
+summary(VTdata[,c(38)]) / 30
+
+mean(VTdata[,c(42)]) # Mean time to endpoint
+sd(VTdata[,c(42)]) # SD time to endpoint
+summary(VTdata[,c(42)])
 
 # Subgroups of etiology
 ischemic <- subset(VTdata,subset =  VTdata[,c(9)] == "1")
   freq(ischemic[,c(11)])
   freq(ischemic[,c(27)])
+nonischemic <- subset(VTdata,subset =  VTdata[,c(9)] == "2")
 freq(VTdata[,c(10)])
 congenital <- VTdata[c(17, 105, 121, 124, 127),]
   freq(congenital[,c(11)])  
@@ -1359,8 +1365,8 @@ ggsurvplot(km.model7,
            freq(a[,c(24)]) # acute success
            freq(a[,c(27)]) # recurrence
            freq(a[,c(43)]) # Endpoint
-                
-            mri3months <- (VTdata[,c(48)] < 93) * VTdata[,c(45)]
+# Use for AHA- ********************************************************  
+            mri3months <- (VTdata[,c(48)] < 94) #* VTdata[,c(46)]
             mri3months
             test <- replace(mri3months, is.na(mri3months), 0)
             km.model1 <- survfit(Surv(time = VTdata[,c(42)] , event = VTdata[,c(43)]) ~ test, data = VTdata)
@@ -1652,7 +1658,7 @@ ggsurvplot(km.model7,
                        #cumevents = TRUE,cumcensor = TRUE
             )
             # p = 0.69
-            mri3months <- (VTdata[,c(48)] < 93) #* VTdata[,c(46)]
+            mri3months <- (VTdata[,c(48)] < 94) #* VTdata[,c(46)]
             mri3months
             test <- replace(mri3months, is.na(mri3months), 0)
             km.model1 <- survfit(Surv(time = VTdata[,c(42)] , event = VTdata[,c(43)]) ~ test, data = VTdata)
@@ -1954,8 +1960,8 @@ a <- subset(VTdata, subset = VTdata[,c(56)] <32)
 freq(a[,c(24)]) # acute success
 freq(a[,c(27)]) # recurrence
 freq(a[,c(43)]) # Endpoint
-
-cct3mo <- (VTdata[,c(56)] < 93) * VTdata[,c(53)]
+# Use for AHA- ******************************************************** 
+cct3mo <- (VTdata[,c(56)] < 94) * VTdata[,c(53)]
 cct3mo
 test <- replace(cct3mo, is.na(cct3mo), 0)
 km.model1 <- survfit(Surv(time = VTdata[,c(42)] , event = VTdata[,c(43)]) ~ test, data = VTdata)
@@ -2820,7 +2826,7 @@ cct3month <- replace(cct3month, is.na(cct3month), 0)
 cct3month <- as.factor(cct3month)
 cct3month
 echo <- replace(VTdata[,c(62)], is.na(VTdata[,c(62)]), 100)
-echo <- as.numeric(echo < 93)
+echo <- as.numeric(echo < 94)
 echo <- as.factor(echo)
 echo
 
@@ -2831,7 +2837,7 @@ nicm
 mixed <- as.numeric(VTdata[,c(9)] == 3)
 mixed
 
-# Final AHA model
+# Final AHA model *****************************************************
 final.model <- coxph(Surv(time = VTdata[,c(42)] , event = VTdata[,c(43)]) ~ mri3month + age 
                      + prevabl + cct3month + EF + epi + echo + Acutesucess, data = VTdata)
 
@@ -2840,6 +2846,60 @@ summary(final.model)
  ?coxph
 
 cox.zph(final.model)
+
+# ischemic model
+i <- subset(VTdata,subset =  VTdata[,c(9)] == "1")
+sex <- as.factor(i[,c(1)])
+age <- i[,c(2)]
+prevabl <- as.factor(i[,c(6)])
+EF <- i[,c(20)]
+epi <- as.factor(i[,c(44)])
+Acutesucess <- (i[,c(24)] == "1")*i[,c(24)]
+Acutesucess <- as.factor(Acutesucess)
+mri3month <- (i[,c(48)] < 94) * i[,c(46)]
+mri3month <- replace(mri3month, is.na(mri3month), 0)
+mri3month <- as.factor(mri3month)
+mri3month
+cct3month <- (i[,c(56)] < 94) * i[,c(53)]
+cct3month <- replace(cct3month, is.na(cct3month), 0)
+cct3month <- as.factor(cct3month)
+cct3month
+echo <- replace(i[,c(62)], is.na(i[,c(62)]), 100)
+echo <- as.numeric(echo < 94)
+echo <- as.factor(echo)
+echo
+
+final.model <- coxph(Surv(time = i[,c(42)] , event = i[,c(43)]) ~ mri3month + age 
+                     + prevabl + cct3month + EF + epi + echo + Acutesucess, data = VTdata)
+summary(final.model)
+
+# non-ischemic model
+ni <- subset(VTdata,subset =  VTdata[,c(9)] == "2")
+sex <- as.factor(ni[,c(1)])
+age <- ni[,c(2)]
+prevabl <- as.factor(ni[,c(6)])
+EF <- ni[,c(20)]
+epi <- as.factor(ni[,c(44)])
+Acutesucess <- (ni[,c(24)] == "1")*ni[,c(24)]
+Acutesucess <- as.factor(Acutesucess)
+mri3month <- (ni[,c(48)] < 94) * ni[,c(46)]
+mri3month <- replace(mri3month, is.na(mri3month), 0)
+mri3month <- as.factor(mri3month)
+mri3month
+cct3month <- (ni[,c(56)] < 94) * ni[,c(53)]
+cct3month <- replace(cct3month, is.na(cct3month), 0)
+cct3month <- as.factor(cct3month)
+cct3month
+echo <- replace(ni[,c(62)], is.na(ni[,c(62)]), 100)
+echo <- as.numeric(echo < 94)
+echo <- as.factor(echo)
+echo
+
+final.model <- coxph(Surv(time = ni[,c(42)] , event = ni[,c(43)]) ~ mri3month + age 
+                     + prevabl + cct3month + EF + epi + echo + Acutesucess, data = VTdata)
+summary(final.model)
+
+
 
 
 # Imaging within 1 month
@@ -2956,3 +3016,226 @@ ps
 chisq.test(ps)
 fisher.test(ps)
     
+#####
+# Table of abstract
+  # For KM curves, I use MRIs anywhere and CTs anywhere - MRI does'nt multiply by c(46) - mayo only, and CCT multiplies by c(53) - any CT
+  # For model its mris only at Mayo - is multiplied by c(46). CCT is multiplied by c(53)
+  # For table, follow the KM curve - anywhere
+
+mri <- subset(VTdata, subset = VTdata[,c(48)] < 94)
+View(mri)
+
+nomri <- subset(VTdata, subset = VTdata[,c(48)] >= 94 | is.na(VTdata[,c(48)]))
+
+ct <- subset(VTdata, subset = VTdata[,c(56)] < 94)
+View(ct)
+
+noct <- subset(VTdata, subset = VTdata[,c(56)] >= 94 | is.na(VTdata[,c(56)]))
+
+
+# Table of abstract
+
+# Age
+summary(VTdata[,c(2)])
+summary(mri[,c(2)])
+summary(nomri[,c(2)])
+  t.test(x = mri[,c(2)], y = nomri[,c(2)], paired = F)
+summary(ct[,c(2)])
+summary(noct[,c(2)])
+  t.test(x = ct[,c(2)], y = noct[,c(2)], paired = F)
+
+# EF
+summary(VTdata[,c(20)])
+summary(mri[,c(20)])
+summary(nomri[,c(20)])
+  t.test(x = mri[,c(20)], y = nomri[,c(20)], paired = F)
+summary(ct[,c(20)])
+summary(noct[,c(20)])
+  t.test(x = ct[,c(20)], y = noct[,c(20)], paired = F)
+
+# Prior VT ablation
+freq(VTdata[,c(6)])
+freq(mri[,c(6)])
+freq(nomri[,c(6)])
+  redomri <- matrix(c(14, 23, 34, 58), byrow = T, ncol = 2, nrow = 2)
+  colnames(redomri) <- c("MRI", "No mri")
+  rownames(redomri) <- c("prior", "no prior")
+  redomri
+  chisq.test(redomri)
+freq(ct[,c(6)])
+freq(noct[,c(6)])
+  redoct <- matrix(c(11, 26, 20, 72), byrow = T, ncol = 2, nrow = 2)
+  colnames(redoct) <- c("ct", "No ct")
+  rownames(redoct) <- c("prior", "no prior")
+  redoct
+  chisq.test(redomri)
+
+# Type of cardiomyopathy; 1 = ischemic, 2 = other, 3 = mixed
+freq(VTdata[,c(9)]) 
+freq(mri[,c(9)])
+freq(nomri[,c(9)])
+  typeofcm <- matrix(c(16, 36, 26, 38, 6, 7), byrow = T, ncol = 2)
+  colnames(typeofcm) <- c("MRI", "no MRI")
+  rownames(typeofcm) <- c("ischemic", "nonischemic", "mixed")
+  typeofcm
+  chisq.test(typeofcm)
+  fisher.test(typeofcm)
+freq(ct[,c(9)])
+freq(noct[,c(9)])
+  typeofcm <- matrix(c(11, 41, 17, 47, 3, 10), byrow = T, ncol = 2)
+  colnames(typeofcm) <- c("CT", "no CT")
+  rownames(typeofcm) <- c("ischemic", "nonischemic", "mixed")
+  typeofcm
+  chisq.test(typeofcm)
+  fisher.test(typeofcm)
+
+# Imaging < 3 months - 48 is days from MRI, 56 is days from CCT, 62 is days from TTE
+  # For MRI vs no MRI
+    # Compare CCT use
+      freq(mri[,c(56)] < 94)
+      freq(nomri[,c(56)] < 94)
+        cct <- matrix(c(9, 22, 39, 59), byrow = T, ncol = 2, nrow = 2)
+        colnames(cct) <- c("MRI", "No MRI")
+        rownames(cct) <- c("CT", "not")
+        cct
+        chisq.test(cct)
+        fisher.test(cct)
+    # Compare TTE use
+      freq(mri[,c(62)] < 94)
+      freq(nomri[,c(62)] < 94)
+        echo <- matrix(c(44, 69, 4, 12), byrow = T, ncol = 2, nrow = 2)
+        colnames(echo) <- c("MRI", "no MRI")
+        rownames(echo) <- c("TTE", "no TTE")
+        echo
+        chisq.test(echo)
+        fisher.test(echo)
+  # For CCT vs No CCT
+    # Compare CMR use
+        freq(ct[,c(48)] < 94)
+        freq(noct[,c(48)] < 94)
+          cMRI <- matrix(c(9, 39, 22, 59), byrow = T, ncol = 2, nrow = 2)
+          colnames(cMRI) <- c("CT", "no CT")
+          rownames(cMRI) <- c("MRIdone", "not")
+          cMRI
+          chisq.test(cMRI)
+          fisher.test(cMRI)
+    # Compare TTE use
+        freq(ct[,c(62)] < 94)
+        freq(noct[,c(62)] < 94)
+          echo <- matrix(c(28, 85, 3, 13), byrow = T, ncol = 2, nrow = 2)
+          colnames(echo) <- c("CT", "no CT")
+          rownames(echo) <- c("TTE", "no TTE")
+          echo
+          chisq.test(echo)
+          fisher.test(echo)
+
+# Epicardial ablation
+freq(VTdata[,c(44)])
+freq(mri[,c(44)])
+freq(nomri[,c(44)])
+  epiabl <- matrix(c(5, 12, 43, 69), byrow = T, ncol = 2, nrow = 2)
+  colnames(epiabl) <- c("MR", "No MR")
+  rownames(epiabl) <- c("epi", "No epi")
+  epiabl
+  chisq.test(epiabl)
+freq(ct[,c(44)])
+freq(noct[,c(44)])
+  epiabl <- matrix(c(7, 10, 24, 88), byrow = T, ncol = 2, nrow = 2)
+  colnames(epiabl) <- c("CT", "No CT")
+  rownames(epiabl) <- c("epi", "not")
+  epiabl
+  chisq.test(epiabl)
+  fisher.test(epiabl)
+
+# Acute success; 1 = yes, 2 = partial, 3 = failure, 4 = not tested
+freq(VTdata[,c(24)])
+freq(mri[,c(24)])
+freq(nomri[,c(24)])
+  as <- matrix(c(30, 50, 18, 31), byrow = T, ncol = 2, nrow = 2)
+  colnames(as) <- c("mr", "No mr")
+  rownames(as) <- c("acute success", "not")
+  as
+  chisq.test(as)
+  fisher.test(as)
+freq(ct[,c(24)])
+freq(noct[,c(24)])
+  as <- matrix(c(17, 63, 14, 35), byrow = T, ncol = 2, nrow = 2)
+  colnames(as) <- c("ct", "No ct")
+  rownames(as) <- c("acute success", "not")
+  as
+  chisq.test(as)
+  fisher.test(as)
+
+# VT recurrence
+freq(VTdata[,c(27)])
+freq(mri[,c(27)])
+freq(nomri[,c(27)])
+  vtrecur <- matrix(c(27, 47, 21, 34), byrow = T, ncol = 2, nrow = 2)
+  colnames(vtrecur) <- c("MRI", "No MRI")
+  rownames(vtrecur) <- c("VT recurrence", "not")
+  vtrecur
+  chisq.test(vtrecur)
+  fisher.test(vtrecur)
+freq(ct[,c(27)])
+freq(noct[,c(27)])
+  vtrecur <- matrix(c(15, 59, 16, 39), byrow = T, ncol = 2, nrow = 2)
+  colnames(vtrecur) <- c("ct", "No ct")
+  rownames(vtrecur) <- c("VT recurrence", "not")
+  vtrecur
+  chisq.test(vtrecur)
+  fisher.test(vtrecur)
+
+# Time to endpoint
+summary(VTdata[,c(42)]) / 30
+summary(mri[,c(42)]) / 30
+summary(nomri[,c(42)]) / 30
+summary(ct[,c(42)]) / 30
+summary(noct[,c(42)]) / 30
+
+# Use for AHA- ********************************************************  
+mri3months <- (VTdata[,c(48)] < 94) #* VTdata[,c(46)]
+mri3months
+test <- replace(mri3months, is.na(mri3months), 0)
+km.model1 <- survfit(Surv(time = VTdata[,c(42)] , event = VTdata[,c(43)]) ~ test, data = VTdata)
+km.model1
+summary(km.model1)
+
+x11()
+ggsurvplot(km.model1,
+           risk.table = TRUE,
+           pval=TRUE,
+           pval.method = TRUE,
+           legend.title = "Cardiac MRI last 3 months",
+           legend.labs = c("No", "Yes"),
+           title="Survival free of VT recurrence, Tx, or death",
+           censor = TRUE,
+           palette = c("black", "grey")
+           
+           # xscale
+           #xlim = c(0,500)
+           #cumevents = TRUE,cumcensor = TRUE
+)
+
+# Use for AHA- ******************************************************** 
+cct3mo <- (VTdata[,c(56)] < 94) * VTdata[,c(53)]
+cct3mo
+test <- replace(cct3mo, is.na(cct3mo), 0)
+km.model1 <- survfit(Surv(time = VTdata[,c(42)] , event = VTdata[,c(43)]) ~ test, data = VTdata)
+km.model1
+summary(km.model1)
+
+x11()
+ggsurvplot(km.model1,
+           risk.table = TRUE,
+           pval=TRUE,
+           pval.method = TRUE,
+           legend.title = "Cardiac CT last 3 months",
+           legend.labs = c("No", "Yes"),
+           title="Survival free of VT recurrence, Tx, or death",
+           censor = TRUE,
+           palette = c("black", "grey")
+           
+           # xscale
+           #xlim = c(0,500)
+           #cumevents = TRUE,cumcensor = TRUE
+)
