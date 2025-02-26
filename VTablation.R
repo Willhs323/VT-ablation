@@ -1,13 +1,18 @@
 # clean current work space
 rm(list=ls(all=T))
-options(stringsAsFactors = F)         # no automatic data transformation
+options(stringsAsFactors = F)   # no automatic data transformation
 options("scipen" = 100, "digits" = 4) # suppress math annotation
 
 library(descr)
+library(survival)
+library(dplyr)
+library(ggplot2)
+library(ggpubr)
+library(survminer) # Can make nicer kaplan meier plots than base R
 
 # note - need to add the any event column this was done on the CSV document
 
-setwd('~/Siontis research/')
+setwd('~/Siontis research/VT ablation/')
 # All data
 # VTdata <- read.csv('12-10 R - Data extraction VT imaging Siontis.csv', na.strings = c("", "NA"))
 VTdata <- read.csv('5-7-23 WS edits - Data extraction VT imaging Siontis.csv', na.strings = c("", "NA"))
@@ -80,6 +85,7 @@ freq(VTdata[,c(39)]) # Dead? 1 = dead
 mean(VTdata[,c(38)]) # Mean time to follow up / tx / death
   sd(VTdata[,c(38)]) # SD time to follow up / tx / death
 summary(VTdata[,c(38)]) / 30
+summary(VTdata[,c(38)])
 
 mean(VTdata[,c(42)]) # Mean time to endpoint
 sd(VTdata[,c(42)]) # SD time to endpoint
@@ -120,11 +126,31 @@ idiopathic <- VTdata[c()]
   
   # Sex
   freq(VTdata[,c(1)]) # Sex, 1 = female, 2 = male
-  freq(a[,c(1)]) # Sex, 1 = female, 2 = male
-  freq(d[,c(1)]) # Sex, 1 = female, 2 = male
+  freq(mri[,c(1)]) # Sex, 1 = female, 2 = male
+  freq(nomri[,c(1)]) # Sex, 1 = female, 2 = male
   shapiro.test(x = VTdata[,c(1)]) # Not normal
-  shapiro.test(x = a[,c(1)]) # Not normal
-  shapiro.test(x = d[,c(1)]) # Not normal
+  sex <- matrix(c(41, 70, 7, 11), byrow = T, ncol = 2, nrow = 2)
+  colnames(sex) <- c("mri", "No mri")
+  rownames(sex) <- c("Male sex", "Female")
+  sex
+  chisq.test(sex)
+  fisher.test(sex)
+  model <- chisq.test(sex)
+  model$expected
+  
+  # To run demographics for those with CMR
+  mri <- subset(VTdata, subset = VTdata[,c(11)] == "1")
+  View(VTdata)
+  
+  # To run demographics for those without CMR
+  nomri <- subset(VTdata, subset = VTdata[,c(11)] == "0")
+  View(VTdata)
+  
+  # Sex
+  freq(VTdata[,c(1)]) # Sex, 1 = female, 2 = male
+  freq(mri[,c(1)]) # Sex, 1 = female, 2 = male
+  freq(nomri[,c(1)]) # Sex, 1 = female, 2 = male
+  shapiro.test(x = VTdata[,c(1)]) # Not normal
   sex <- matrix(c(41, 70, 7, 11), byrow = T, ncol = 2, nrow = 2)
   colnames(sex) <- c("mri", "No mri")
   rownames(sex) <- c("Male sex", "Female")
@@ -819,7 +845,7 @@ repeats <- subset(VTdata, subset = VTdata[,c(6)] == "1") # includes multiple rep
     # nonischemic with and without MRI
       nonischemicmri <- subset(nonischemic, subset = nonischemic[,c(11)] == "1")
       nonischemicnomri <- subset(nonischemic, subset = nonischemic[,c(11)] == "0")
-      
+  
     # For all
     freq(VTdata[,c(27)]) # Frequency of recurrence
     freq(ischemic[,c(27)])
@@ -932,6 +958,106 @@ repeats <- subset(VTdata, subset = VTdata[,c(6)] == "1") # includes multiple rep
     acutesucessnonischemic
     chisq.test(acutesucessnonischemic)
     fisher.test(acutesucessnonischemic)
+    
+###    
+    # Ischemic vs nonischemic CTs
+    # Ischemicct
+    cct3mo <- (VTdata[,c(56)] < 94) * VTdata[,c(53)]
+    ischemic <- subset(VTdata, subset = VTdata[,c(9)] == "1")
+    nonischemic <- subset(VTdata, subset = VTdata[,c(9)] == "2")
+    View(ischemic)
+    
+    # ischemic with and without CT
+    ischemicct <- subset(ischemic, subset = ischemic[,c(15)] == "1")
+    ischemicnoct <- subset(ischemic, subset = ischemic[,c(15)] == "0")
+    View(ischemicct)
+    View(ischemicnoct)
+    dim(ischemicct)
+    dim(ischemicnoct)
+    
+    # nonischemic with and without CT
+    nonischemicct <- subset(nonischemic, subset = nonischemic[,c(15)] == "1")
+    nonischemicnoct <- subset(nonischemic, subset = nonischemic[,c(15)] == "0")
+    View(nonischemicct)
+    View(nonischemicnoct)
+    dim(nonischemicnoct)
+    
+    
+    # Ischemic with and without MRI
+    ischemicmri <- subset(ischemic, subset = ischemic[,c(11)] == "1")
+    ischemicnomri <- subset(ischemic, subset = ischemic[,c(11)] == "0")
+    # nonischemic with and without MRI
+    nonischemicmri <- subset(nonischemic, subset = nonischemic[,c(11)] == "1")
+    nonischemicnomri <- subset(nonischemic, subset = nonischemic[,c(11)] == "0")
+    
+    # VT recurrence
+    freq(ischemic[,c(27)])
+    freq(nonischemic[,c(27)])
+    freq(ischemicct[,c(27)])
+    freq(ischemicnoct[,c(27)])
+    
+    freq(nonischemic[,c(27)])
+    freq(nonischemicct[,c(27)])
+    freq(nonischemicnoct[,c(27)])
+    
+    recurischemic <- matrix(c(
+      sum(ischemicct[,c(27)]),
+      sum(ischemicnoct[,c(27)]),
+      nrow(ischemicct) - sum(ischemicct[,c(27)]),
+      nrow(ischemicnoct) - sum(ischemicnoct[,c(27)])
+    ), byrow = T, ncol = 2, nrow = 2)
+    colnames(recurischemic) <- c("ct", "no ct")
+    rownames(recurischemic) <- c("Recurrence", "No recurrence")
+    recurischemic
+    chisq.test(recurischemic)
+    fisher.test(recurischemic)
+    
+    recurnonischemic <- matrix(c(
+      sum(nonischemicct[,c(27)]),
+      sum(nonischemicnoct[,c(27)]),
+      nrow(nonischemicct) - sum(nonischemicct[,c(27)]),
+      nrow(nonischemicnoct) - sum(nonischemicnoct[,c(27)])
+    ), byrow = T, ncol = 2, nrow = 2)
+    colnames(recurnonischemic) <- c("ct", "no ct")
+    rownames(recurnonischemic) <- c("Recurrence", "No recurrence")
+    recurnonischemic
+    chisq.test(recurnonischemic)
+    fisher.test(recurnonischemic)
+    
+    # Acute success
+    # Ischemic with and without CT
+    freq(ischemicct[,c(24)])
+    freq(ischemicnoct[,c(24)])
+    acutesucessischemic <- matrix(c(9, 5, 18, 20), byrow = T, ncol = 2, nrow = 2)
+    rownames(acutesucessischemic) <- c("Acute success", "Not accute success")
+    colnames(acutesucessischemic) <- c("CT", "no CT")
+    acutesucessischemic
+    chisq.test(acutesucessischemic)
+    fisher.test(acutesucessischemic)
+    
+    # nonischemic with and without CT
+    freq(nonischemicct[,c(24)])
+    freq(nonischemicnoct[,c(24)])
+    acutesucessnonischemic <- matrix(c(8, 9, 34, 13), byrow = T, ncol = 2, nrow = 2)
+    rownames(acutesucessnonischemic) <- c("Acute success", "Not accute success")
+    colnames(acutesucessnonischemic) <- c("CT", "no CT")
+    acutesucessnonischemic
+    chisq.test(acutesucessnonischemic)
+    fisher.test(acutesucessnonischemic)
+    
+    ##
+    # Time to endpoint
+    summary(ischemicct[,c(42)])
+    summary(ischemicnoct[,c(42)])
+    summary(nonischemicct[,c(42)])
+    summary(nonischemicnoct[,c(42)])
+    
+    summary(ischemicmri[,c(42)])
+    summary(ischemicnomri[,c(42)])
+    summary(nonischemicmri[,c(42)])
+    summary(nonischemicnomri[,c(42)])
+    
+    
     
 #####
     # Statistics for subgroup analysis #2 - first time ablations vs. repeats
@@ -1279,7 +1405,7 @@ ggsurvplot(km.model7,
            #xlim = c(0,500)
            #cumevents = TRUE,cumcensor = TRUE
 )
-
+#####
 # 4/2/2023
   
   # Log rank for those with any MRI
@@ -1373,22 +1499,34 @@ ggsurvplot(km.model7,
             km.model1
             summary(km.model1)
             
+            View(km.model1)
             x11()
-            ggsurvplot(km.model1,
+            p1 <- ggsurvplot(km.model1,
+                       surv.scale = "percent",
                        risk.table = TRUE,
                        pval=TRUE,
                        pval.method = TRUE,
-                       legend.title = "Cardiac MRI last 3 months",
-                       legend.labs = c("No", "Yes"),
+                       xlab = c("Years"),
+                       ylab = element_blank(),
                        title="Survival free of VT recurrence, Tx, or death",
+                       legend.labs = c("No", "Yes"),
+                       legend.title = c("Cardiac MRI within 3 months"),
+                       xscale = c("d_y"),
+                       break.x.by = 365.25 * 0.5,
+                       risk.table.title = c("At Risk"),
+                       risk.table.fontsize = 4,
+                       risk.table.y.text = FALSE,
+                       risk.table.y.text.col = TRUE,
+                       tables.y.text = FALSE,
+                       tables.height = 0.15,
                        censor = TRUE,
-                       palette = c("black", "grey")
-                       
-                       # xscale
-                       #xlim = c(0,500)
-                       #cumevents = TRUE,cumcensor = TRUE
-            )
-            
+                       font.x = 12,
+                       font.y = 12,
+                       font.tickslab = 16,
+                      
+                       palette = c("black", "grey"),
+                       )
+    
             a <- subset(VTdata, subset = VTdata[,c(48)] <93)
             freq(a[,c(24)]) # acute success
             freq(a[,c(27)]) # recurrence
@@ -1969,7 +2107,7 @@ km.model1
 summary(km.model1)
 
 x11()
-ggsurvplot(km.model1,
+p2 <- ggsurvplot(km.model1,
            risk.table = TRUE,
            pval=TRUE,
            pval.method = TRUE,
@@ -2839,7 +2977,7 @@ mixed
 
 # Final AHA model *****************************************************
 final.model <- coxph(Surv(time = VTdata[,c(42)] , event = VTdata[,c(43)]) ~ mri3month + age 
-                     + prevabl + cct3month + EF + epi + echo + Acutesucess, data = VTdata)
+                     + prevabl + cct3month + EF + epi + echo + Acutesucess + nicm, data = VTdata)
 
 summary(final.model)
 
@@ -3023,15 +3161,9 @@ fisher.test(ps)
   # For table, follow the KM curve - anywhere
 
 mri <- subset(VTdata, subset = VTdata[,c(48)] < 94)
-View(mri)
-
 nomri <- subset(VTdata, subset = VTdata[,c(48)] >= 94 | is.na(VTdata[,c(48)]))
-
 ct <- subset(VTdata, subset = VTdata[,c(56)] < 94)
-View(ct)
-
 noct <- subset(VTdata, subset = VTdata[,c(56)] >= 94 | is.na(VTdata[,c(56)]))
-
 
 # Table of abstract
 
@@ -3043,6 +3175,44 @@ summary(nomri[,c(2)])
 summary(ct[,c(2)])
 summary(noct[,c(2)])
   t.test(x = ct[,c(2)], y = noct[,c(2)], paired = F)
+
+# Sex
+freq(VTdata[,1])
+freq(mri[,1])
+freq(nomri[,1])
+freq(ct[,1])
+freq(noct[,1])
+sex <- matrix(c(41, 70, 7, 11), byrow = T, ncol = 2, nrow = 2)
+colnames(sex) <- c("mri", "No mri")
+rownames(sex) <- c("Male sex", "Female")
+sex
+chisq.test(sex)
+fisher.test(sex)
+sex <- matrix(c(28, 83, 3, 15), byrow = T, ncol = 2, nrow = 2)
+colnames(sex) <- c("ct", "No ct")
+rownames(sex) <- c("Male sex", "Female")
+sex
+chisq.test(sex)
+fisher.test(sex)
+
+# ICD
+freq(VTdata[,3])
+freq(mri[,3])
+freq(nomri[,3])
+freq(ct[,3])
+freq(noct[,3])
+sex <- matrix(c(43, 77, 5, 4), byrow = T, ncol = 2, nrow = 2)
+colnames(sex) <- c("mri", "No mri")
+rownames(sex) <- c("ICD", "No ICD")
+sex
+chisq.test(sex)
+fisher.test(sex)
+sex <- matrix(c(29, 91, 2, 7), byrow = T, ncol = 2, nrow = 2)
+colnames(sex) <- c("ct", "No ct")
+rownames(sex) <- c("ICD", "No ICD")
+sex
+chisq.test(sex)
+fisher.test(sex)
 
 # EF
 summary(VTdata[,c(20)])
@@ -3092,6 +3262,8 @@ freq(noct[,c(9)])
 # Imaging < 3 months - 48 is days from MRI, 56 is days from CCT, 62 is days from TTE
   # For MRI vs no MRI
     # Compare CCT use
+  mri[,48] < 94 | 
+  
       freq(mri[,c(56)] < 94)
       freq(nomri[,c(56)] < 94)
         cct <- matrix(c(9, 22, 39, 59), byrow = T, ncol = 2, nrow = 2)
@@ -3128,6 +3300,8 @@ freq(noct[,c(9)])
           echo
           chisq.test(echo)
           fisher.test(echo)
+    # Any imaging
+    
 
 # Epicardial ablation
 freq(VTdata[,c(44)])
@@ -3184,6 +3358,54 @@ freq(noct[,c(27)])
   vtrecur
   chisq.test(vtrecur)
   fisher.test(vtrecur)
+  
+# Transplant
+freq(VTdata[,c(35)]) # Transplant at time of analysis
+freq(mri[,c(35)]) # Transplant at time of analysis
+freq(nomri[,c(35)]) # Transplant at time of analysis
+freq(ct[,c(35)]) # Transplant at time of analysis
+freq(noct[,c(35)]) # Transplant at time of analysis
+transplant <- matrix(c(4, 5, 44, 76), byrow = T, ncol = 2, nrow = 2)
+colnames(transplant) <- c("MRI", "No MRI")
+rownames(transplant) <- c("transplant", "not")
+transplant
+chisq.test(transplant)
+fisher.test(transplant)
+transplant <- matrix(c(2, 7, 29, 91), byrow = T, ncol = 2, nrow = 2)
+colnames(transplant) <- c("vt", "No vt")
+rownames(transplant) <- c("transplant", "not")
+transplant
+chisq.test(transplant)
+fisher.test(transplant)
+
+# Death
+freq(VTdata[,c(39)]) # Dead? 1 = dead
+freq(mri[,c(39)]) # Dead? 1 = dead
+freq(nomri[,c(39)]) # Dead? 1 = dead
+freq(ct[,c(39)]) # Dead? 1 = dead
+freq(noct[,c(39)]) # Dead? 1 = dead
+death <- matrix(c(5, 11, 43, 70), byrow = T, ncol = 2, nrow = 2)
+colnames(death) <- c("MRI", "No MRI")
+rownames(death) <- c("death", "not")
+death
+chisq.test(death)
+fisher.test(death)
+transplant <- matrix(c(3, 13, 28, 85), byrow = T, ncol = 2, nrow = 2)
+colnames(transplant) <- c("ct", "No ct")
+rownames(transplant) <- c("death", "not death")
+transplant
+chisq.test(transplant)
+fisher.test(transplant)
+
+# Follow up
+summary(VTdata[,c(38)]) / 30
+summary(mri[,c(38)]) / 30
+summary(nomri[,c(38)]) / 30
+summary(ct[,c(38)]) / 30
+summary(noct[,c(38)]) / 30
+
+t.test(x = mri[,c(38)], y = nomri[,c(38)], paired = F)
+t.test(x = ct[,c(38)], y = noct[,c(38)], paired = F)
 
 # Time to endpoint
 summary(VTdata[,c(42)]) / 30
@@ -3239,3 +3461,4 @@ ggsurvplot(km.model1,
            #xlim = c(0,500)
            #cumevents = TRUE,cumcensor = TRUE
 )
+
